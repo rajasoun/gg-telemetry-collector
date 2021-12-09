@@ -10,6 +10,7 @@ GITGUARDIAN_API_URL="https://$GITGUARDIAN_URL/exposed"
 
 curl -s -H "Authorization: Token ${GITGUARDIAN_API_KEY}" "${GITGUARDIAN_API_URL}/v1/sources?type=github&&page=1&per_page=100" | jq  > "data/data.json"
 curl -s -H "Authorization: Token ${GITGUARDIAN_API_KEY}" "${GITGUARDIAN_API_URL}/v1/sources?type=github&&page=2&per_page=100" | jq  >> "data/data.json"
+curl -s -H "Authorization: Token ${GITGUARDIAN_API_KEY}" "${GITGUARDIAN_API_URL}/v1/sources?type=github&&page=3&per_page=100" | jq  >> "data/data.json"
 dasel -r json -w csv < "data/data.json" > "data/data.csv"
 
 INPUT="data/data.csv"
