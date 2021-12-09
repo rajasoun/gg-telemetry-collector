@@ -22,8 +22,8 @@ function get_secrets_count_from_api(){
     sed 1d $INPUT | while IFS=, read -r full_name id	type url visibility
     do
         echo "Getting Secrets For Repo $full_name with ID : $id"
-        #secrets_count=$(curl -H "Authorization: Token ${GITGUARDIAN_API_KEY}" "${GITGUARDIAN_API_URL}/v1/occurrences/secrets?source_id=$id"  |  jq -c '.[] | select(  .presence == "present")' | wc -l)
-        secrets_count=$(curl -s -H "Authorization: Token ${GITGUARDIAN_API_KEY}" "${GITGUARDIAN_API_URL}/v1/occurrences/secrets?source_id=$id"  |  jq -c  'map(.sha) | unique | length')
+        secrets_count=$(curl -H "Authorization: Token ${GITGUARDIAN_API_KEY}" "${GITGUARDIAN_API_URL}/v1/occurrences/secrets?source_id=$id"  |  jq -c '.[] | select(  .presence == "present")' | wc -l)
+        #secrets_count=$(curl -s -H "Authorization: Token ${GITGUARDIAN_API_KEY}" "${GITGUARDIAN_API_URL}/v1/occurrences/secrets?source_id=$id"  |  jq -c  'map(.sha) | unique | length')
         echo "Secrets Count: $secrets_count"
         echo "$id,$full_name,$secrets_count" >> "result/data.csv"
     done 
