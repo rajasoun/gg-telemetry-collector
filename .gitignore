@@ -2,4 +2,6 @@
 *.env
 *.csv
 reports
+cookie.txt
+
 

@@ -15,16 +15,39 @@ OLDIFS=$IFS
 IFS=','
 [ ! -f $INPUT ] && { echo "$INPUT file not found"; exit 99; }
 
-echo "id,full_name,secrets_count" > "result/data.csv"
-sed 1d $INPUT | while IFS=, read -r full_name id	type url visibility
-do
-	echo "Getting Secrets For Repo $full_name with ID : $id"
-    #secrets_count=$(curl -H "Authorization: Token ${GITGUARDIAN_API_KEY}" "${GITGUARDIAN_API_URL}/v1/occurrences/secrets?source_id=$id"  |  jq -c '.[] | select(  .presence == "present")' | wc -l)
-    secrets_count=$(curl -s -H "Authorization: Token ${GITGUARDIAN_API_KEY}" "${GITGUARDIAN_API_URL}/v1/occurrences/secrets?source_id=$id"  |  jq -c  'map(.sha) | unique | length')
-    echo "Secrets Count: $secrets_count"
-    echo "$id,$full_name,$secrets_count" >> "result/data.csv"
-done 
-IFS=$OLDIFS
+function get_secrets_count_from_api(){
+    local GITGUARDIAN_API_URL="$GITGUARDIAN_URL/exposed"
+    echo "id,full_name,secrets_count" > "result/data.csv"
+    sed 1d $INPUT | while IFS=, read -r full_name id	type url visibility
+    do
+        echo "Getting Secrets For Repo $full_name with ID : $id"
+        #secrets_count=$(curl -H "Authorization: Token ${GITGUARDIAN_API_KEY}" "${GITGUARDIAN_API_URL}/v1/occurrences/secrets?source_id=$id"  |  jq -c '.[] | select(  .presence == "present")' | wc -l)
+        secrets_count=$(curl -s -H "Authorization: Token ${GITGUARDIAN_API_KEY}" "${GITGUARDIAN_API_URL}/v1/occurrences/secrets?source_id=$id"  |  jq -c  'map(.sha) | unique | length')
+        echo "Secrets Count: $secrets_count"
+        echo "$id,$full_name,$secrets_count" >> "result/data.csv"
+    done 
+    IFS=$OLDIFS
+}
+
+function get_secrets_count_from_webcall(){
+    local url=$GITGUARDIAN_URL
+    local http_url="https://$url/api/v1/accounts/2/sources/?monitored=true&page=1&page_size=10&search="
+    local cookie=$(<cookie.txt) 
+
+    echo "id,full_name,secrets_count" > "result/data.csv"
+    sed 1d $INPUT | while IFS=, read -r full_name id	type url visibility
+    do
+        echo "Getting Secrets For Repo $full_name with ID : $id"
+        filter_criteria=$(printf %s "$full_name" | jq -sRr @uri)
+        web_end_point="$http_url$filter_criteria&ordering=-open_issues_count"
+        secrets_count=$(curl $web_end_point -H $cookie --compressed | jq  -c '.results[] .open_issues_count')
+        echo "Secrets Count: $secrets_count"
+        echo "$id,$full_name,$secrets_count" >> "result/data.csv"
+    done 
+    IFS=$OLDIFS
+}
+
+get_secrets_count_from_webcall
 
 
 
