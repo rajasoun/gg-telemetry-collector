@@ -42,8 +42,7 @@ function get_secrets_count_from_webcall(){
         filter_criteria=$(printf %s "$full_name" | jq -sRr @uri)
         web_end_point="$http_url$filter_criteria&ordering=-open_issues_count"
         json=$(curl -s $web_end_point -H $cookie --compressed)
-        #secrets_count=$(jq  -c '.results[] .open_issues_count' <<< "${json}" )
-        secrets_count=$(jq -r --arg full_name $full_name '.results[] | select(.url | endswith($full_name) ) | .open_issues_count' <<< "${json}" )
+        secrets_count=$(jq -r --arg repo_name $full_name '.results[] | select(.url | endswith($repo_name) ) | .open_issues_count' <<< "${json}" )
         if [ ! -z $secrets_count ] ;then 
             if [ "$secrets_count" -ne "0"  ] ;then
                 echo "$id,$full_name,$secrets_count" >> "result/data.csv"
