@@ -37,12 +37,14 @@ function get_secrets_count_from_webcall(){
     echo "id,full_name,secrets_count" > "result/data.csv"
     sed 1d $INPUT | while IFS=, read -r full_name id	type url visibility
     do
-        echo "Getting Secrets For Repo $full_name with ID : $id"
+        echo "Getting Secrets Count For Repo $full_name"
         filter_criteria=$(printf %s "$full_name" | jq -sRr @uri)
         web_end_point="$http_url$filter_criteria&ordering=-open_issues_count"
         secrets_count=$(curl -s $web_end_point -H $cookie --compressed | jq  -c '.results[] .open_issues_count')
-        echo "Secrets Count: $secrets_count"
-        echo "$id,$full_name,$secrets_count" >> "result/data.csv"
+        if [ ! -z $secrets_count ] && [ "$secrets_count" -gt 0  ];then 
+            echo "Secrets Count: $secrets_count"
+            echo "$id,$full_name,$secrets_count" >> "result/data.csv"
+        fi 
     done 
     IFS=$OLDIFS
 }
