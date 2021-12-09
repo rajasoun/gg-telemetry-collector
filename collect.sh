@@ -1,8 +1,7 @@
 #!//usr/bin/env bash
 
 # Purpose: Get Secrets for Repos from GG
-# pre-requsites:
-#   brew install jq dasel
+# pre-requsites: brew install jq dasel (already included in devcontainer)
 # ------------------------------------------
 
 source .env 
