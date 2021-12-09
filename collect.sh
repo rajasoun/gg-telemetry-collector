@@ -6,6 +6,8 @@
 # ------------------------------------------
 
 source .env 
+GITGUARDIAN_API_URL="https://$GITGUARDIAN_URL/exposed"
+
 curl -s -H "Authorization: Token ${GITGUARDIAN_API_KEY}" "${GITGUARDIAN_API_URL}/v1/sources?type=github&&page=1&per_page=100" | jq  > "data/data.json"
 curl -s -H "Authorization: Token ${GITGUARDIAN_API_KEY}" "${GITGUARDIAN_API_URL}/v1/sources?type=github&&page=2&per_page=100" | jq  >> "data/data.json"
 dasel -r json -w csv < "data/data.json" > "data/data.csv"
@@ -16,7 +18,6 @@ IFS=','
 [ ! -f $INPUT ] && { echo "$INPUT file not found"; exit 99; }
 
 function get_secrets_count_from_api(){
-    local GITGUARDIAN_API_URL="$GITGUARDIAN_URL/exposed"
     echo "id,full_name,secrets_count" > "result/data.csv"
     sed 1d $INPUT | while IFS=, read -r full_name id	type url visibility
     do
@@ -30,8 +31,7 @@ function get_secrets_count_from_api(){
 }
 
 function get_secrets_count_from_webcall(){
-    local url=$GITGUARDIAN_URL
-    local http_url="https://$url/api/v1/accounts/2/sources/?monitored=true&page=1&page_size=10&search="
+    local http_url="https://$GITGUARDIAN_URL/api/v1/accounts/2/sources/?monitored=true&page=1&page_size=10&search="
     local cookie=$(<cookie.txt) 
 
     echo "id,full_name,secrets_count" > "result/data.csv"
@@ -40,7 +40,7 @@ function get_secrets_count_from_webcall(){
         echo "Getting Secrets For Repo $full_name with ID : $id"
         filter_criteria=$(printf %s "$full_name" | jq -sRr @uri)
         web_end_point="$http_url$filter_criteria&ordering=-open_issues_count"
-        secrets_count=$(curl $web_end_point -H $cookie --compressed | jq  -c '.results[] .open_issues_count')
+        secrets_count=$(curl -s $web_end_point -H $cookie --compressed | jq  -c '.results[] .open_issues_count')
         echo "Secrets Count: $secrets_count"
         echo "$id,$full_name,$secrets_count" >> "result/data.csv"
     done 
