@@ -8,10 +8,10 @@
 source .env 
 GITGUARDIAN_API_URL="https://$GITGUARDIAN_URL/exposed"
 
-curl -s -H "Authorization: Token ${GITGUARDIAN_API_KEY}" "${GITGUARDIAN_API_URL}/v1/sources?type=github&&page=1&per_page=100" | jq  > "data/data.json"
-curl -s -H "Authorization: Token ${GITGUARDIAN_API_KEY}" "${GITGUARDIAN_API_URL}/v1/sources?type=github&&page=2&per_page=100" | jq  >> "data/data.json"
-curl -s -H "Authorization: Token ${GITGUARDIAN_API_KEY}" "${GITGUARDIAN_API_URL}/v1/sources?type=github&&page=3&per_page=100" | jq  >> "data/data.json"
-dasel -r json -w csv < "data/data.json" > "data/data.csv"
+# curl -s -H "Authorization: Token ${GITGUARDIAN_API_KEY}" "${GITGUARDIAN_API_URL}/v1/sources?type=github&&page=1&per_page=100" | jq  > "data/data.json"
+# curl -s -H "Authorization: Token ${GITGUARDIAN_API_KEY}" "${GITGUARDIAN_API_URL}/v1/sources?type=github&&page=2&per_page=100" | jq  >> "data/data.json"
+# curl -s -H "Authorization: Token ${GITGUARDIAN_API_KEY}" "${GITGUARDIAN_API_URL}/v1/sources?type=github&&page=3&per_page=100" | jq  >> "data/data.json"
+# dasel -r json -w csv < "data/data.json" > "data/data.csv"
 
 INPUT="data/data.csv"
 OLDIFS=$IFS
@@ -41,10 +41,13 @@ function get_secrets_count_from_webcall(){
         echo "Getting Secrets Count For Repo $full_name"
         filter_criteria=$(printf %s "$full_name" | jq -sRr @uri)
         web_end_point="$http_url$filter_criteria&ordering=-open_issues_count"
-        secrets_count=$(curl -s $web_end_point -H $cookie --compressed | jq  -c '.results[] .open_issues_count')
-        if [ ! -z $secrets_count ] && [ "$secrets_count" -gt 0  ];then 
-            echo "Secrets Count: $secrets_count"
-            echo "$id,$full_name,$secrets_count" >> "result/data.csv"
+        json=$(curl -s $web_end_point -H $cookie --compressed)
+        #secrets_count=$(jq  -c '.results[] .open_issues_count' <<< "${json}" )
+        secrets_count=$(jq -r --arg full_name $full_name '.results[] | select(.url | endswith($full_name) ) | .open_issues_count' <<< "${json}" )
+        if [ ! -z $secrets_count ] ;then 
+            if [ "$secrets_count" -ne "0"  ] ;then
+                echo "$id,$full_name,$secrets_count" >> "result/data.csv"
+            fi 
         fi 
     done 
     IFS=$OLDIFS
