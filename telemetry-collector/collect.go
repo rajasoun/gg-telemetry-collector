@@ -40,8 +40,8 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 	client := &http.Client{}
-
-	url := formWebEndPointForRepo("LearningAtCisco/Cairo")
+	testRepoName := os.Getenv("TEST_REPO_NAME")
+	url := formWebEndPointForRepo(testRepoName)
 	method := "GET"
 
 	req, err := http.NewRequest(method, url, nil)
