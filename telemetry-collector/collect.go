@@ -1,12 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -41,6 +43,41 @@ func loadDotEnv() {
 	}
 }
 
+// https://mholt.github.io/json-to-go/
+type SecretScanResults struct {
+	Count    int         `json:"count"`
+	Next     interface{} `json:"next"`
+	Previous interface{} `json:"previous"`
+	Results  []struct {
+		ID                  int    `json:"id"`
+		Monitored           bool   `json:"monitored"`
+		Visibility          string `json:"visibility"`
+		DisplayName         string `json:"display_name"`
+		IntegrationName     string `json:"integrationName"`
+		Type                string `json:"type"`
+		URL                 string `json:"url"`
+		Business            bool   `json:"business"`
+		AlreadyScanned      bool   `json:"already_scanned"`
+		AlreadyFinishedScan bool   `json:"already_finished_scan"`
+		LastScan            struct {
+			Date            time.Time `json:"date"`
+			Status          string    `json:"status"`
+			CommitsScanned  int       `json:"commits_scanned"`
+			Duration        string    `json:"duration"`
+			BranchesScanned int       `json:"branches_scanned"`
+			SecretsCount    int       `json:"secrets_count"`
+			TaskID          string    `json:"task_id"`
+			SourceType      string    `json:"source_type"`
+		} `json:"last_scan"`
+		OpenIssuesCount               int    `json:"open_issues_count"`
+		ClosedIssuesCount             int    `json:"closed_issues_count"`
+		Health                        string `json:"health"`
+		SpecificSource                int    `json:"specific_source"`
+		OpenIssuesWithPresenceCount   int    `json:"open_issues_with_presence_count"`
+		ClosedIssuesWithPresenceCount int    `json:"closed_issues_with_presence_count"`
+	} `json:"results"`
+}
+
 func main() {
 	loadDotEnv()
 
@@ -73,6 +110,8 @@ func main() {
 		log.Fatalln(err)
 		return
 	}
-	json := string(body)
-	log.Println(json)
+
+	var secretScanResults SecretScanResults
+	json.Unmarshal(body, &secretScanResults)
+	log.Printf("API Response as struct %+v\n", secretScanResults)
 }
