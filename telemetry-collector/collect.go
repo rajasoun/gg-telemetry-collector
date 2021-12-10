@@ -1,17 +1,64 @@
 package main
 
 import (
-	"encoding/json"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/joho/godotenv"
+	"github.com/tidwall/gjson"
 )
+
+func loadDotEnv() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+}
+
+func createHttpClient() (*http.Client, *http.Request, bool) {
+	client := &http.Client{}
+	url := formWebEndPointForRepo(os.Getenv("TEST_REPO_NAME"))
+	method := "GET"
+
+	req, err := http.NewRequest(method, url, nil)
+	if err != nil {
+		log.Println(err)
+		return nil, nil, true
+	}
+	cookieContent := getContentFromFile("cookie.txt")
+	cookie := strings.ReplaceAll(cookieContent, "cookie: ", "")
+
+	req.Header.Add("cookie", cookie)
+	return client, req, false
+}
+
+func executeHttpRequest(client *http.Client, req *http.Request) ([]byte, bool) {
+	res, err := client.Do(req)
+	if err != nil {
+		log.Fatalln(err)
+		return nil, true
+	}
+	defer res.Body.Close()
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		log.Fatalln(err)
+		return nil, true
+	}
+	return body, false
+}
+
+func getSecretsCount(body []byte, repoName string) string {
+	json := string(body)
+	query := "results.#(url%\"*/" + repoName + "\").open_issues_count"
+	println(query)
+	value := gjson.Parse(json).Get(query)
+	return value.String()
+}
 
 func formWebEndPointForRepo(repoName string) string {
 	domain := os.Getenv("GITGUARDIAN_URL")
@@ -36,82 +83,19 @@ func getContentFromFile(fileName string) string {
 	return cookieContent
 }
 
-func loadDotEnv() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-}
-
-// https://mholt.github.io/json-to-go/
-type SecretScanResults struct {
-	Count    int         `json:"count"`
-	Next     interface{} `json:"next"`
-	Previous interface{} `json:"previous"`
-	Results  []struct {
-		ID                  int    `json:"id"`
-		Monitored           bool   `json:"monitored"`
-		Visibility          string `json:"visibility"`
-		DisplayName         string `json:"display_name"`
-		IntegrationName     string `json:"integrationName"`
-		Type                string `json:"type"`
-		URL                 string `json:"url"`
-		Business            bool   `json:"business"`
-		AlreadyScanned      bool   `json:"already_scanned"`
-		AlreadyFinishedScan bool   `json:"already_finished_scan"`
-		LastScan            struct {
-			Date            time.Time `json:"date"`
-			Status          string    `json:"status"`
-			CommitsScanned  int       `json:"commits_scanned"`
-			Duration        string    `json:"duration"`
-			BranchesScanned int       `json:"branches_scanned"`
-			SecretsCount    int       `json:"secrets_count"`
-			TaskID          string    `json:"task_id"`
-			SourceType      string    `json:"source_type"`
-		} `json:"last_scan"`
-		OpenIssuesCount               int    `json:"open_issues_count"`
-		ClosedIssuesCount             int    `json:"closed_issues_count"`
-		Health                        string `json:"health"`
-		SpecificSource                int    `json:"specific_source"`
-		OpenIssuesWithPresenceCount   int    `json:"open_issues_with_presence_count"`
-		ClosedIssuesWithPresenceCount int    `json:"closed_issues_with_presence_count"`
-	} `json:"results"`
-}
-
 func main() {
 	loadDotEnv()
 
-	client := &http.Client{}
-	url := formWebEndPointForRepo(os.Getenv("TEST_REPO_NAME"))
-	method := "GET"
-
-	req, err := http.NewRequest(method, url, nil)
-	if err != nil {
-		log.Println(err)
+	client, req, onErr := createHttpClient()
+	if onErr {
 		return
 	}
 
-	// Get content from cookie.txt
-	cookieContent := getContentFromFile("cookie.txt")
-	// Remove cookie header
-	cookie := strings.ReplaceAll(cookieContent, "cookie: ", "")
-
-	req.Header.Add("cookie", cookie)
-
-	res, err := client.Do(req)
-	if err != nil {
-		log.Fatalln(err)
-		return
-	}
-	defer res.Body.Close()
-
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		log.Fatalln(err)
+	body, onErr := executeHttpRequest(client, req)
+	if onErr {
 		return
 	}
 
-	var secretScanResults SecretScanResults
-	json.Unmarshal(body, &secretScanResults)
-	log.Printf("API Response as struct %+v\n", secretScanResults)
+	secretsCount := getSecretsCount(body, os.Getenv("TEST_REPO_NAME"))
+	println(secretsCount)
 }
