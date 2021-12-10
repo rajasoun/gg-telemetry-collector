@@ -5,11 +5,14 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
+
+	"github.com/joho/godotenv"
 )
 
 func formWebEndPointForRepo(repoName string) string {
-	domain := "gitscan-wwwin.cisco.com"
+	domain := os.Getenv("GITGUARDIAN_URL")
 	api_end_point := "/api/v1/accounts/2/sources/?"
 	params := url.Values{}
 	params.Add("monitored", "true")
@@ -32,6 +35,10 @@ func getContentFromFile(fileName string) string {
 }
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
 	client := &http.Client{}
 
 	url := formWebEndPointForRepo("LearningAtCisco/Cairo")
